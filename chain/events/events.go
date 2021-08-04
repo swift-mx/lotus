@@ -184,10 +184,6 @@ func (e *Events) listenHeadChangesOnce(ctx context.Context) error {
 }
 
 func (e *Events) headChange(ctx context.Context, rev, app []*types.TipSet) error {
-	if len(app) == 0 {
-		return xerrors.New("events.headChange expected at least one applied tipset")
-	}
-
 	e.lk.Lock()
 	defer e.lk.Unlock()
 
