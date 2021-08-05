@@ -104,47 +104,47 @@ func (o *observer) listenHeadChangesOnce(ctx context.Context) error {
 	if o.head == nil {
 		o.head = head
 		close(o.ready)
-	} else {
-		// TODO: this could get slow. Should we add an API? Ideally, ChainNotify would take a tipset key.
-		revert, apply, err := store.ReorgOps(func(tsk types.TipSetKey) (*types.TipSet, error) {
-			return o.api.ChainGetTipSet(ctx, tsk)
-		}, o.head, head)
+	} else if !o.head.Equals(head) {
+		changes, err := o.api.ChainGetPath(ctx, o.head.Key(), head.Key())
 		if err != nil {
-			return xerrors.Errorf("failed to compute reorg: %w", err)
+			return xerrors.Errorf("failed to get path from last applied tipset to head: %w", err)
 		}
 
-		for i, j := 0, len(apply)-1; i < j; i, j = i+1, j-1 {
-			apply[i], apply[j] = apply[j], apply[i]
-		}
-
-		if err := o.headChange(ctx, revert, apply); err != nil {
+		if err := o.applyChanges(ctx, changes); err != nil {
 			return xerrors.Errorf("failed to apply head changes: %w", err)
 		}
 	}
 
-	for notif := range notifs {
-		// Used to wait for a prior notification round to finish (by tests)
-		if len(notif) == 0 {
-			continue
-		}
-
-		var rev, app []*types.TipSet
-		for _, notif := range notif {
-			switch notif.Type {
-			case store.HCRevert:
-				rev = append(rev, notif.Val)
-			case store.HCApply:
-				app = append(app, notif.Val)
-			default:
-				log.Warnf("unexpected head change notification type: '%s'", notif.Type)
-			}
-		}
-
-		if err := o.headChange(ctx, rev, app); err != nil {
-			return xerrors.Errorf("failed to apply head changes: %w", err)
+	for changes := range notifs {
+		if err := o.applyChanges(ctx, changes); err != nil {
+			return err
 		}
 	}
 
+	return nil
+}
+
+func (o *observer) applyChanges(ctx context.Context, changes []*api.HeadChange) error {
+	// Used to wait for a prior notification round to finish (by tests)
+	if len(changes) == 0 {
+		return nil
+	}
+
+	var rev, app []*types.TipSet
+	for _, changes := range changes {
+		switch changes.Type {
+		case store.HCRevert:
+			rev = append(rev, changes.Val)
+		case store.HCApply:
+			app = append(app, changes.Val)
+		default:
+			log.Errorf("unexpected head change notification type: '%s'", changes.Type)
+		}
+	}
+
+	if err := o.headChange(ctx, rev, app); err != nil {
+		return xerrors.Errorf("failed to apply head changes: %w", err)
+	}
 	return nil
 }
 

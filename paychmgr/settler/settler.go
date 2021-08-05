@@ -56,7 +56,7 @@ func SettlePaymentChannels(mctx helpers.MetricsCtx, lc fx.Lifecycle, papi API) e
 	lc.Append(fx.Hook{
 		OnStart: func(context.Context) error {
 			pcs := newPaymentChannelSettler(ctx, &papi)
-			ev, err := events.NewEvents(ctx, papi)
+			ev, err := events.NewEvents(ctx, &papi)
 			if err != nil {
 				return err
 			}

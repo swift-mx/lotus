@@ -72,6 +72,13 @@ func (fcs *fakeCS) ChainHead(ctx context.Context) (*types.TipSet, error) {
 	panic("implement me")
 }
 
+func (fcs *fakeCS) ChainGetPath(ctx context.Context, from, to types.TipSetKey) ([]*api.HeadChange, error) {
+	fcs.callNumberLk.Lock()
+	defer fcs.callNumberLk.Unlock()
+	fcs.callNumber["ChainGetPath"] = fcs.callNumber["ChainGetPath"] + 1
+	panic("Not Implemented")
+}
+
 func (fcs *fakeCS) ChainGetTipSet(ctx context.Context, key types.TipSetKey) (*types.TipSet, error) {
 	fcs.callNumberLk.Lock()
 	defer fcs.callNumberLk.Unlock()
