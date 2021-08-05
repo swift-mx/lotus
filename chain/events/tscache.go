@@ -11,6 +11,7 @@ import (
 )
 
 type tsCacheAPI interface {
+	ChainGetTipSetAfterHeight(context.Context, abi.ChainEpoch, types.TipSetKey) (*types.TipSet, error)
 	ChainGetTipSetByHeight(context.Context, abi.ChainEpoch, types.TipSetKey) (*types.TipSet, error)
 	ChainGetTipSet(context.Context, types.TipSetKey) (*types.TipSet, error)
 	ChainHead(context.Context) (*types.TipSet, error)
@@ -47,13 +48,25 @@ func (tsc *tipSetCache) ChainGetTipSet(ctx context.Context, tsk types.TipSetKey)
 }
 
 func (tsc *tipSetCache) ChainGetTipSetByHeight(ctx context.Context, height abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error) {
+	return tsc.get(ctx, height, tsk, true)
+}
+
+func (tsc *tipSetCache) ChainGetTipSetAfterHeight(ctx context.Context, height abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error) {
+	return tsc.get(ctx, height, tsk, false)
+}
+
+func (tsc *tipSetCache) get(ctx context.Context, height abi.ChainEpoch, tsk types.TipSetKey, prev bool) (*types.TipSet, error) {
+	fallback := tsc.storage.ChainGetTipSetAfterHeight
+	if prev {
+		fallback = tsc.storage.ChainGetTipSetByHeight
+	}
 	tsc.mu.RLock()
 
 	// Nothing in the cache?
 	if tsc.len == 0 {
 		tsc.mu.RUnlock()
 		log.Warnf("tipSetCache.get: cache is empty, requesting from storage (h=%d)", height)
-		return tsc.storage.ChainGetTipSetByHeight(ctx, height, tsk)
+		return fallback(ctx, height, tsk)
 	}
 
 	// Resolve the head.
@@ -64,7 +77,7 @@ func (tsc *tipSetCache) ChainGetTipSetByHeight(ctx context.Context, height abi.C
 		head, ok = tsc.byKey[tsk]
 		if !ok {
 			tsc.mu.RUnlock()
-			return tsc.storage.ChainGetTipSetByHeight(ctx, height, tsk)
+			return fallback(ctx, height, tsk)
 		}
 	}
 
@@ -81,11 +94,15 @@ func (tsc *tipSetCache) ChainGetTipSetByHeight(ctx context.Context, height abi.C
 	} else if height < tailH {
 		log.Warnf("tipSetCache.get: requested tipset not in cache, requesting from storage (h=%d; tail=%d)", height, tailH)
 		tsc.mu.RUnlock()
-		return tsc.storage.ChainGetTipSetByHeight(ctx, height, head.Key())
+		return fallback(ctx, height, head.Key())
 	}
 
+	direction := 1
+	if prev {
+		direction = -1
+	}
 	var ts *types.TipSet
-	for i := 0; i < tsc.len && ts == nil; i++ {
+	for i := 0; i < tsc.len && ts == nil; i += direction {
 		ts = tsc.byHeight[normalModulo(tsc.start-int(headH-height)+i, len(tsc.byHeight))]
 	}
 	tsc.mu.RUnlock()

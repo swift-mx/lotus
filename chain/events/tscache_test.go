@@ -17,6 +17,11 @@ type tsCacheAPIFailOnStorageCall struct {
 	t *testing.T
 }
 
+func (tc *tsCacheAPIFailOnStorageCall) ChainGetTipSetAfterHeight(ctx context.Context, epoch abi.ChainEpoch, key types.TipSetKey) (*types.TipSet, error) {
+	tc.t.Fatal("storage call")
+	return &types.TipSet{}, nil
+}
+
 func (tc *tsCacheAPIFailOnStorageCall) ChainGetTipSetByHeight(ctx context.Context, epoch abi.ChainEpoch, key types.TipSetKey) (*types.TipSet, error) {
 	tc.t.Fatal("storage call")
 	return &types.TipSet{}, nil
@@ -122,9 +127,10 @@ func TestTsCacheNulls(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, h.height-2, ts.Height())
 
+	// Should skip the nulls and walk back to the last tipset.
 	ts, err = h.tsc.ChainGetTipSetByHeight(ctx, h.height-3, types.EmptyTSK)
 	require.NoError(t, err)
-	require.Nil(t, ts)
+	require.Equal(t, h.height-8, ts.Height())
 
 	ts, err = h.tsc.ChainGetTipSetByHeight(ctx, h.height-8, types.EmptyTSK)
 	require.NoError(t, err)
@@ -151,14 +157,19 @@ func TestTsCacheNulls(t *testing.T) {
 }
 
 type tsCacheAPIStorageCallCounter struct {
-	t                      *testing.T
-	chainGetTipSetByHeight int
-	chainGetTipSet         int
-	chainHead              int
+	t                         *testing.T
+	chainGetTipSetByHeight    int
+	chainGetTipSetAfterHeight int
+	chainGetTipSet            int
+	chainHead                 int
 }
 
 func (tc *tsCacheAPIStorageCallCounter) ChainGetTipSetByHeight(ctx context.Context, epoch abi.ChainEpoch, key types.TipSetKey) (*types.TipSet, error) {
 	tc.chainGetTipSetByHeight++
+	return &types.TipSet{}, nil
+}
+func (tc *tsCacheAPIStorageCallCounter) ChainGetTipSetAfterHeight(ctx context.Context, epoch abi.ChainEpoch, key types.TipSetKey) (*types.TipSet, error) {
+	tc.chainGetTipSetAfterHeight++
 	return &types.TipSet{}, nil
 }
 func (tc *tsCacheAPIStorageCallCounter) ChainHead(ctx context.Context) (*types.TipSet, error) {

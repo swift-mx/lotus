@@ -88,7 +88,7 @@ func (e *heightEvents) ChainAt(ctx context.Context, hnd HeightHandler, rev Rever
 				ts = head
 			} else {
 				var err error
-				ts, err = e.api.ChainGetTipSetByHeight(ctx, handler.height, head.Key())
+				ts, err = e.api.ChainGetTipSetAfterHeight(ctx, handler.height, head.Key())
 				if err != nil {
 					return xerrors.Errorf("events.ChainAt: failed to get tipset: %s", err)
 				}

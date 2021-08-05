@@ -118,6 +118,8 @@ func (e *hcEventsObserver) Apply(ctx context.Context, from, to *types.TipSet) er
 	e.lk.Lock()
 	defer e.lk.Unlock()
 
+	defer func() { e.lastTs = to }()
+
 	// Check if the head change caused any state changes that we were
 	// waiting for
 	stateChanges := e.checkStateChanges(from, to)
@@ -129,11 +131,7 @@ func (e *hcEventsObserver) Apply(ctx context.Context, from, to *types.TipSet) er
 	}
 
 	// Check if the head change included any new message calls
-	newCalls, err := e.checkNewCalls(ctx, from, to)
-	if err != nil {
-		// TODO: do something smarter?
-		return err
-	}
+	newCalls := e.checkNewCalls(ctx, from, to)
 
 	// Queue up calls until there have been enough blocks to reach
 	// confidence on the message calls
@@ -155,6 +153,8 @@ func (e *hcEventsObserver) Apply(ctx context.Context, from, to *types.TipSet) er
 func (e *hcEventsObserver) Revert(ctx context.Context, from, to *types.TipSet) error {
 	e.lk.Lock()
 	defer e.lk.Unlock()
+
+	defer func() { e.lastTs = to }()
 
 	reverts, ok := e.revertQueue[from.Height()]
 	if !ok {
@@ -261,7 +261,7 @@ func (e *hcEventsObserver) applyTimeouts(ctx context.Context, ts *types.TipSet) 
 		}
 
 		// This should be cached.
-		timeoutTs, err := e.cs.ChainGetTipSetByHeight(ctx, ts.Height()-abi.ChainEpoch(trigger.confidence), ts.Key())
+		timeoutTs, err := e.cs.ChainGetTipSetAfterHeight(ctx, ts.Height()-abi.ChainEpoch(trigger.confidence), ts.Key())
 		if err != nil {
 			log.Errorf("events: applyTimeouts didn't find tipset for event; wanted %d; current %d", ts.Height()-abi.ChainEpoch(trigger.confidence), ts.Height())
 		}
@@ -449,7 +449,7 @@ func newMessageEvents(hcAPI headChangeAPI, cs EventAPI) messageEvents {
 }
 
 // Check if there are any new actor calls
-func (me *messageEvents) checkNewCalls(ctx context.Context, from, to *types.TipSet) (map[triggerID][]eventData, error) {
+func (me *messageEvents) checkNewCalls(ctx context.Context, from, to *types.TipSet) map[triggerID][]eventData {
 	me.lk.RLock()
 	defer me.lk.RUnlock()
 
@@ -474,7 +474,7 @@ func (me *messageEvents) checkNewCalls(ctx context.Context, from, to *types.TipS
 		}
 	})
 
-	return res, nil
+	return res
 }
 
 // Get the messages in a tipset

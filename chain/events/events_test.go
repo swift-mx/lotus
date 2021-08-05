@@ -99,6 +99,12 @@ func (fcs *fakeCS) ChainGetTipSetByHeight(context.Context, abi.ChainEpoch, types
 	fcs.callNumber["ChainGetTipSetByHeight"] = fcs.callNumber["ChainGetTipSetByHeight"] + 1
 	panic("Not Implemented")
 }
+func (fcs *fakeCS) ChainGetTipSetAfterHeight(context.Context, abi.ChainEpoch, types.TipSetKey) (*types.TipSet, error) {
+	fcs.callNumberLk.Lock()
+	defer fcs.callNumberLk.Unlock()
+	fcs.callNumber["ChainGetTipSetAfterHeight"] = fcs.callNumber["ChainGetTipSetAfterHeight"] + 1
+	panic("Not Implemented")
+}
 
 func (fcs *fakeCS) makeTs(t *testing.T, parents []cid.Cid, h abi.ChainEpoch, msgcid cid.Cid) *types.TipSet {
 	a, _ := address.NewFromString("t00")
@@ -845,6 +851,10 @@ func TestCalledTimeout(t *testing.T) {
 	events, err = NewEvents(context.Background(), fcs)
 	require.NoError(t, err)
 
+	// XXX: Needed to set the latest head so "check" succeeds". Is that OK? Or do we expect
+	// check to work _before_ we've received any events.
+	fcs.advance(0, 1, nil)
+
 	err = events.Called(context.Background(), func(ctx context.Context, ts *types.TipSet) (d bool, m bool, e error) {
 		return true, true, nil
 	}, func(msg *types.Message, rec *types.MessageReceipt, ts *types.TipSet, curH abi.ChainEpoch) (bool, error) {
@@ -1252,6 +1262,10 @@ func TestStateChangedTimeout(t *testing.T) {
 	fcs = newFakeCS(t)
 	events, err = NewEvents(context.Background(), fcs)
 	require.NoError(t, err)
+
+	// XXX: Needed to set the latest head so "check" succeeds". Is that OK? Or do we expect
+	// check to work _before_ we've received any events.
+	fcs.advance(0, 1, nil)
 
 	err = events.StateChanged(func(ctx context.Context, ts *types.TipSet) (d bool, m bool, e error) {
 		return true, true, nil
