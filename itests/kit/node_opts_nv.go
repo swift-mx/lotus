@@ -2,9 +2,11 @@ package kit
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node"
@@ -31,8 +33,7 @@ var DefaultTestUpgradeSchedule = stmgr.UpgradeSchedule{{
 }}
 
 func LatestActorsAt(upgradeHeight abi.ChainEpoch) node.Option {
-	// Attention: Update this when introducing new actor versions or your tests will be sad
-	return NetworkUpgradeAt(network.Version13, upgradeHeight)
+	return NetworkUpgradeAt(build.NewestNetworkVersion, upgradeHeight)
 }
 
 // InstantaneousNetworkVersion starts the network instantaneously at the
@@ -66,9 +67,22 @@ func NetworkUpgradeAt(version network.Version, upgradeHeight abi.ChainEpoch) nod
 
 		schedule = append(schedule, upgrade)
 	}
+	if len(schedule) == 0 {
+		panic("empty upgrade schedule")
+	}
+	targetUpgrade := &schedule[len(schedule)-1]
+	if targetUpgrade.Network != version {
+		panic(fmt.Sprintf("failed to upgrade to target version %d, last version is %d",
+			version, targetUpgrade.Network))
+	}
 
 	if upgradeHeight > 0 {
-		schedule[len(schedule)-1].Height = upgradeHeight
+		// We can't go lower because our default upgrades are sequential.
+		if upgradeHeight < targetUpgrade.Height {
+			panic(fmt.Sprintf("target upgrade height %d for version %d less than minimum %d",
+				upgradeHeight, version, targetUpgrade.Height))
+		}
+		targetUpgrade.Height = upgradeHeight
 	}
 
 	return node.Override(new(stmgr.UpgradeSchedule), schedule)

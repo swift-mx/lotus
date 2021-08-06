@@ -31,7 +31,7 @@ func testTapeFix(t *testing.T, blocktime time.Duration, after bool) {
 	defer cancel()
 
 	upgradeSchedule := stmgr.UpgradeSchedule{{
-		Network:   build.ActorUpgradeNetworkVersion,
+		Network:   network.Version4,
 		Height:    1,
 		Migration: stmgr.UpgradeActorsV2,
 	}}

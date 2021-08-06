@@ -35,9 +35,10 @@ type nodeOpts struct {
 
 // DefaultNodeOpts are the default options that will be applied to test nodes.
 var DefaultNodeOpts = nodeOpts{
-	balance:   big.Mul(big.NewInt(100000000), types.NewInt(build.FilecoinPrecision)),
-	sectors:   DefaultPresealsPerBootstrapMiner,
-	proofType: abi.RegisteredSealProof_StackedDrg2KiBV1_1, // default _concrete_ proof type for non-genesis miners (notice the _1) for new actors versions.
+	balance:       big.Mul(big.NewInt(100000000), types.NewInt(build.FilecoinPrecision)),
+	sectors:       DefaultPresealsPerBootstrapMiner,
+	proofType:     abi.RegisteredSealProof_StackedDrg2KiBV1_1,                             // default _concrete_ proof type for non-genesis miners (notice the _1) for new actors versions.
+	extraNodeOpts: []node.Option{InstantaneousNetworkVersion(build.NewestNetworkVersion)}, // only upgrade when requested
 }
 
 // OptBuilder is used to create an option after some other node is already
