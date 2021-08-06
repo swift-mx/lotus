@@ -27,7 +27,7 @@ type heightEvents struct {
 	lk                        sync.Mutex
 	head                      *types.TipSet
 	tsHeights, triggerHeights map[abi.ChainEpoch][]*heightHandler
-	lastGc                    abi.ChainEpoch
+	lastGc                    abi.ChainEpoch //nolint:structcheck
 }
 
 func newHeightEvents(api EventAPI, gcConfidence abi.ChainEpoch) *heightEvents {
@@ -185,7 +185,7 @@ func (e *heightEventsObserver) updateHead(h *types.TipSet) {
 type heightEventsObserver heightEvents
 
 func (e *heightEventsObserver) Revert(ctx context.Context, from, to *types.TipSet) error {
-	// Update the head first so we don't accidently skip reverting a concurrent call to ChainAt.
+	// Update the head first so we don't accidental skip reverting a concurrent call to ChainAt.
 	e.updateHead(to)
 
 	// Call revert on all hights between the two tipsets, handling empty tipsets.
@@ -216,7 +216,7 @@ func (e *heightEventsObserver) Revert(ctx context.Context, from, to *types.TipSe
 }
 
 func (e *heightEventsObserver) Apply(ctx context.Context, from, to *types.TipSet) error {
-	// Update the head first so we don't accidently skip applying a concurrent call to ChainAt.
+	// Update the head first so we don't accidental skip applying a concurrent call to ChainAt.
 	e.updateHead(to)
 
 	for h := from.Height() + 1; h <= to.Height(); h++ {

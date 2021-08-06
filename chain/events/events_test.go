@@ -41,8 +41,6 @@ type fakeCS struct {
 	msgs    map[cid.Cid]fakeMsg
 	blkMsgs map[cid.Cid]cid.Cid
 
-	sync sync.Mutex
-
 	tipsets map[types.TipSetKey]*types.TipSet
 
 	sub func(rev, app []*types.TipSet)

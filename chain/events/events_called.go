@@ -332,7 +332,6 @@ type headChangeAPI interface {
 
 // watcherEvents watches for a state change
 type watcherEvents struct {
-	ctx   context.Context
 	cs    EventAPI
 	hcAPI headChangeAPI
 

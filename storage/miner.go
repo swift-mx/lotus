@@ -171,7 +171,7 @@ func (m *Miner) Run(ctx context.Context) error {
 	// consumer of chain head changes.
 	evts, err := events.NewEvents(ctx, m.api)
 	if err != nil {
-		return xerrors.Errorf("failed to subscribe to events", err)
+		return xerrors.Errorf("failed to subscribe to events: %w", err)
 	}
 	evtsAdapter := NewEventsAdapter(evts)
 
